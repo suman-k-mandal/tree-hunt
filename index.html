@@ -114,6 +114,16 @@
   .tile .emo { font-size: 72px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.15)); }
   .tile small { font-size: 17px; font-weight: 600; opacity: .9; }
   .home-foot { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .welcome .big-emo { font-size: clamp(90px, 14vw, 140px); line-height: 1; }
+  .name-input {
+    font: inherit; font-size: clamp(34px, 5vw, 48px); font-weight: 800; text-align: center; color: var(--forest);
+    width: min(520px, 90%); padding: 14px 20px; border-radius: 24px;
+    border: 4px solid var(--border); background: var(--card); box-shadow: 0 6px 0 var(--border);
+    -webkit-user-select: text; user-select: text; outline: none;
+  }
+  .name-input:focus { border-color: var(--forest-2); }
+  .link-btn { border: none; background: none; font-size: 20px; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 8px; }
+  body.welcoming #leafChip { visibility: hidden; }
   .soft-btn {
     border: 3px solid var(--border); background: var(--card); border-radius: 999px;
     padding: 12px 22px; font-size: 20px; font-weight: 700; cursor: pointer;
@@ -1094,9 +1104,39 @@ function confetti() {
 $('#homeBtn').onclick = home;
 $('#againBtn').onclick = () => { if (run && run.prompt && !busy) run.prompt(); };
 $('#leafChip').onclick = () => { if (!run) garden(); };
+/* first launch on this device: ask for a name (stored only here); "Skip" is fine too */
+function welcome() {
+  gen++; hush(); run = null; busy = false;
+  setPlaying(false);
+  document.body.classList.add('welcoming');
+  stage.innerHTML = `<div class="screen welcome">
+    <div class="big-emo">🌳</div>
+    <div class="hello"><h1>Welcome to Tree Hunt!</h1><p>What's your name?</p></div>
+    <input class="name-input" id="firstName" maxlength="20" placeholder="Your name"
+      autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="go">
+    <button class="big-btn" id="letsGo">Let's go! 🍃</button>
+    <button class="link-btn" id="skipName">Skip for now</button>
+    <p class="grownups">Your name stays on this device only. A grown-up can change it later on the Leaf Garden page.</p>
+  </div>`;
+  const input = $('#firstName');
+  const done = name => {
+    save.kid = name; persist(); applyName();
+    document.body.classList.remove('welcoming');
+    home();
+    say(name ? `Hi ${name}! Let's go on a tree hunt!` : `Let's go on a tree hunt!`);
+  };
+  $('#letsGo').onclick = () => {
+    const name = cleanName(input.value);
+    if (!name) { shake(input); input.focus(); return; }
+    done(name);
+  };
+  input.onkeydown = e => { if (e.key === 'Enter') $('#letsGo').click(); };
+  $('#skipName').onclick = () => done('');
+}
+
 showCount();
 applyName();
-home();
+if (save.kid === undefined) welcome(); else home();
 
 /* offline support once hosted (ignored when opened as a local file) */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

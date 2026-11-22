@@ -1,6 +1,6 @@
 // Caches the app so it works offline once added to the Home Screen.
 // Bump VERSION whenever index.html changes so the iPad picks up the update.
-const VERSION = 'tree-hunt-v3';
+const VERSION = 'tree-hunt-v4';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
