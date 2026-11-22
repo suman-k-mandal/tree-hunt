@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tree Hunt">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Tree Hunt</title>
+<style>
+  :root {
+    --bg: #fbf7ee;
+    --card: #ffffff;
+    --ink: #24302b;
+    --muted: #64746c;
+    --forest: #2d6a4f;
+    --forest-2: #40916c;
+    --forest-light: #e3f4ea;
+    --amber: #e08a00;
+    --amber-light: #fff1cc;
+    --coral: #e05a47;
+    --sky: #3b82c4;
+    --sky-light: #e2effa;
+    --border: #e8e1d3;
+    --radius: 26px;
+    --font: ui-rounded, "SF Pro Rounded", "Nunito", "Avenir Next", -apple-system, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    background-image: radial-gradient(circle at 10% 0%, #eef8ef 0, transparent 40%),
+                      radial-gradient(circle at 100% 100%, #fff3dc 0, transparent 45%);
+    color: var(--ink);
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  button { font-family: inherit; color: inherit; touch-action: manipulation; }
+
+  #app {
+    height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* ---------- top bar ---------- */
+  .top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px;
+    min-height: 76px;
+  }
+  .icon-btn {
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 3px solid var(--border); background: var(--card);
+    font-size: 28px; display: grid; place-items: center; cursor: pointer;
+    box-shadow: 0 3px 0 var(--border);
+    flex: none;
+  }
+  .icon-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--border); }
+  #title { font-weight: 800; font-size: clamp(20px, 3vw, 30px); color: var(--forest); }
+  #dots { flex: 1; display: flex; justify-content: center; gap: 10px; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--border); transition: all .3s; }
+  .dot.done { background: var(--forest-2); }
+  .dot.now { background: var(--amber); transform: scale(1.3); }
+  .spacer { flex: 1; }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    border: 3px solid var(--border); background: var(--card);
+    border-radius: 999px; padding: 8px 18px 8px 12px; height: 60px;
+    font-size: 26px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 3px 0 var(--border); flex: none;
+  }
+  .chip.bump { animation: bump .4s ease; }
+  @keyframes bump { 50% { transform: scale(1.18); } }
+  body:not(.playing) .play-only { display: none !important; }
+  body.playing .home-only { display: none; }
+
+  #stage {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 4px 20px 24px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .screen { width: 100%; max-width: 1100px; margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+
+  /* ---------- home ---------- */
+  .hello { text-align: center; }
+  .hello h1 { margin: 0; font-size: clamp(30px, 5vw, 48px); color: var(--forest); }
+  .hello p { margin: 4px 0 0; font-size: 22px; color: var(--muted); }
+  .tiles {
+    width: 100%;
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile {
+    border: none; border-radius: var(--radius); padding: 22px 16px;
+    min-height: 190px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    font-size: 26px; font-weight: 800; color: white;
+    box-shadow: 0 8px 0 rgba(0,0,0,.16);
+    transition: transform .1s;
+  }
+  .tile:active { transform: translateY(5px); box-shadow: 0 3px 0 rgba(0,0,0,.16); }
+  .tile .emo { font-size: 72px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.15)); }
+  .tile small { font-size: 17px; font-weight: 600; opacity: .9; }
+  .home-foot { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .soft-btn {
+    border: 3px solid var(--border); background: var(--card); border-radius: 999px;
+    padding: 12px 22px; font-size: 20px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 3px 0 var(--border);
+  }
+
+  /* ---------- shared question bits ---------- */
+  .prompt {
+    font-size: clamp(26px, 3.6vw, 38px); font-weight: 800; text-align: center; margin: 0;
+    max-width: 900px;
+  }
+  .sub { font-size: 22px; color: var(--muted); text-align: center; margin: -8px 0 0; font-weight: 600; }
+  .opts { display: grid; gap: 18px; width: 100%; max-width: 900px; grid-template-columns: repeat(3, 1fr); }
+  .opt {
+    border: 4px solid var(--border); background: var(--card); border-radius: var(--radius);
+    padding: 18px 10px; min-height: 150px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    font-size: clamp(22px, 2.8vw, 30px); font-weight: 800;
+    box-shadow: 0 6px 0 var(--border);
+    transition: transform .1s, background .2s, border-color .2s, opacity .3s;
+  }
+  .opt:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--border); }
+  .opt .emo { font-size: clamp(64px, 9vw, 96px); line-height: 1.05; }
+  .opt.word { font-size: clamp(44px, 7vw, 72px); min-height: 170px; letter-spacing: 1px; }
+  .opt.num { font-size: clamp(52px, 8vw, 84px); min-height: 140px; }
+  .opt.reading { border-color: var(--amber); background: var(--amber-light); }
+  .opt.right { border-color: var(--forest-2); background: #d4f3df; box-shadow: 0 6px 0 #9fd9b4; }
+  .opt.nope { opacity: .35; }
+  .shake { animation: shake .45s ease; }
+  @keyframes shake { 20%,60% { transform: translateX(-12px) rotate(-2deg); } 40%,80% { transform: translateX(12px) rotate(2deg); } }
+  .pop { animation: pop .5s ease; }
+  @keyframes pop { 40% { transform: scale(1.12); } }
+
+  .big-letter {
+    font-size: clamp(90px, 14vw, 150px); font-weight: 900; line-height: 1; color: var(--forest);
+    background: var(--card); border: 4px solid var(--border); border-radius: 32px;
+    padding: 10px 36px 18px; box-shadow: 0 6px 0 var(--border);
+  }
+  .big-letter span { color: var(--amber); font-size: .7em; margin-left: 12px; }
+  .target-card {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--amber-light); border: 4px solid #f5d98a; border-radius: 32px;
+    padding: 12px 34px; font-size: clamp(40px, 6vw, 60px); font-weight: 900;
+  }
+  .target-card .emo { font-size: 1.6em; }
+
+  /* ---------- story ---------- */
+  .story { display: grid; gap: 22px; width: 100%; grid-template-columns: 1fr; }
+  @media (min-width: 980px) and (orientation: landscape) {
+    .story { grid-template-columns: 1.05fr 1fr; align-items: start; }
+  }
+  .story-card {
+    background: var(--card); border: 4px solid var(--border); border-radius: var(--radius);
+    padding: 20px 22px; box-shadow: 0 6px 0 var(--border);
+  }
+  .story-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .story-head .emo { font-size: 64px; line-height: 1; }
+  .story-head h2 { margin: 0; font-size: 32px; color: var(--forest); }
+  .sent {
+    display: block; width: 100%; text-align: left;
+    font-size: clamp(24px, 2.8vw, 30px); font-weight: 600; line-height: 1.35;
+    padding: 12px 14px; margin: 6px 0; border-radius: 16px;
+    border: 3px solid transparent; background: transparent; pointer-events: none;
+    transition: background .2s, border-color .2s;
+  }
+  .sent.reading { background: var(--amber-light); }
+  .story.proof .sent { pointer-events: auto; border: 3px dashed #c9bfa9; cursor: pointer; background: #fffdf7; }
+  .story.proof .sent:active { background: var(--amber-light); }
+  .story .sent.right { background: #d4f3df; border: 3px solid var(--forest-2); }
+  .story-side { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .story .opts { grid-template-columns: 1fr; gap: 12px; }
+  .story .opt { flex-direction: row; justify-content: flex-start; min-height: 96px; padding: 10px 20px; text-align: left; font-size: clamp(22px, 2.5vw, 28px); }
+  .story .opt .emo { font-size: 56px; }
+  .story.proof .opts .opt:not(.right) { opacity: .3; pointer-events: none; }
+  .step-pill {
+    background: var(--amber-light); color: #9a5b00; font-weight: 800; font-size: 20px;
+    padding: 6px 18px; border-radius: 999px;
+  }
+
+  /* ---------- counting ---------- */
+  .field {
+    width: 100%; max-width: 900px;
+    background: #f2f8ee; border: 4px dashed #cfe3c5; border-radius: 32px;
+    padding: 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+  }
+  .thing {
+    position: relative; border: none; background: transparent; cursor: pointer;
+    font-size: clamp(50px, 7vw, 74px); line-height: 1; padding: 6px; border-radius: 20px;
+    transition: transform .15s;
+  }
+  .thing.counted { background: rgba(255,255,255,.85); transform: scale(.92); }
+  .thing .n {
+    position: absolute; top: -4px; right: -4px; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--amber); color: white; font-size: 20px; font-weight: 900;
+    display: grid; place-items: center;
+  }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 980px; }
+  .compare .opt { min-height: 280px; flex-direction: row; flex-wrap: wrap; align-content: center; gap: 4px; padding: 18px; }
+  .compare .opt .emo { font-size: clamp(42px, 5.5vw, 60px); }
+
+  /* ---------- shapes & patterns ---------- */
+  .opt svg { width: clamp(90px, 13vw, 140px); height: clamp(90px, 13vw, 140px); }
+  .pattern {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    background: var(--card); border: 4px solid var(--border); border-radius: 32px; padding: 16px 20px;
+  }
+  .pattern .cell { font-size: clamp(46px, 7vw, 76px); width: 1.25em; height: 1.25em; display: grid; place-items: center; border-radius: 18px; }
+  .pattern .cell.lit { background: var(--amber-light); }
+  .pattern .cell.q { border: 4px dashed var(--amber); color: var(--amber); font-weight: 900; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.07); } }
+
+  /* ---------- venn ---------- */
+  .venn-wrap { width: 100%; max-width: 860px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #venn { width: 100%; height: auto; max-height: 56vh; touch-action: manipulation; cursor: pointer; }
+  #venn .c { transition: fill-opacity .25s, stroke-width .25s; }
+  #venn .c.lit { fill-opacity: .55; stroke-width: 9; }
+  #venn text { font-family: var(--font); }
+  .venn-item {
+    font-size: clamp(70px, 10vw, 100px); line-height: 1;
+    background: var(--card); border: 4px solid var(--border); border-radius: 28px; padding: 8px 22px;
+    box-shadow: 0 6px 0 var(--border);
+  }
+
+  /* ---------- done & garden ---------- */
+  .done h1 { font-size: clamp(40px, 6vw, 64px); margin: 0; color: var(--forest); text-align: center; }
+  .done p { font-size: 28px; margin: 0; font-weight: 700; text-align: center; }
+  .row-btns { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+  .big-btn {
+    border: none; border-radius: 999px; padding: 18px 36px; font-size: 28px; font-weight: 800; cursor: pointer;
+    background: var(--forest); color: white; box-shadow: 0 6px 0 #1b4332;
+  }
+  .big-btn.alt { background: var(--amber); box-shadow: 0 6px 0 #a35f00; }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1b4332; }
+  .garden {
+    width: 100%; max-width: 980px; min-height: 200px;
+    background: linear-gradient(#e9f6e4, #d5ecc9); border-radius: 32px; border: 4px solid #c6e2b8;
+    padding: 18px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-content: flex-start;
+    font-size: 38px;
+  }
+  .trees { font-size: 64px; text-align: center; letter-spacing: 4px; }
+  .grownups { font-size: 18px; color: var(--muted); text-align: center; max-width: 700px; }
+
+  /* ---------- levels ---------- */
+  .opts.four { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .opts.four { grid-template-columns: repeat(2, 1fr); } }
+  .lvl { font-weight: 800; font-size: 20px; color: #9a5b00; background: var(--amber-light); border-radius: 999px; padding: 4px 14px; margin-right: 6px; align-self: center; }
+  .levelup {
+    background: linear-gradient(135deg, #fff1cc, #ffe08a); border: 4px solid #f5c542; border-radius: 28px;
+    padding: 14px 30px; font-size: clamp(26px, 3.6vw, 36px); font-weight: 900; color: #8a5200; text-align: center;
+    animation: pop .7s ease 2;
+  }
+  .lvl-table { display: grid; grid-template-columns: auto auto auto auto; gap: 8px 14px; align-items: center; justify-content: center; font-size: 18px; margin-top: 10px; }
+  .lvl-table button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); background: var(--card); font-size: 22px; font-weight: 800; cursor: pointer; }
+
+  .flyer { position: fixed; width: 64px; height: 64px; font-size: 52px; display: grid; place-items: center; z-index: 50; pointer-events: none; }
+  .confetti { position: fixed; top: -60px; font-size: 44px; z-index: 40; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(540deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <button id="homeBtn" class="icon-btn play-only" aria-label="Home">🏠</button>
+    <div id="title" class="home-only">Tree Hunt</div>
+    <div class="spacer home-only"></div>
+    <div id="dots" class="play-only"></div>
+    <button id="againBtn" class="icon-btn play-only" aria-label="Hear it again">🔊</button>
+    <button id="leafChip" class="chip" aria-label="Leaf garden">🍃 <span id="leafCount">0</span></button>
+  </header>
+  <main id="stage"></main>
+</div>
+
+<script>
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const stage = $('#stage');
+const rand = n => Math.floor(Math.random() * n);
+const pick = a => a[rand(a.length)];
+const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+function pop(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+
+/* ---------- saved progress (this device only) ---------- */
+const KEY = 'tree-hunt-v1';
+let save = { leaves: 0, garden: [], muted: false, levels: {} };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) save = { ...save, ...s }; } catch (e) {}
+save.levels = save.levels || {};
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+/* the child's name lives only on this device (set by a grown-up on the garden page) */
+const cleanName = s => String(s || '').replace(/[^\p{L}\p{M} '\-]/gu, '').trim().slice(0, 20);
+const kidName = () => cleanName(save.kid);
+function applyName() {
+  const t = kidName() ? `${kidName()}'s Tree Hunt` : 'Tree Hunt';
+  document.title = t; $('#title').textContent = t;
+}
+const MAX_LEVEL = 5;
+const lvl = id => save.levels[id] || 1;
+const stars = n => '⭐'.repeat(n);
+
+/* ---------- voice ---------- */
+const tts = 'speechSynthesis' in window;
+let voice = null;
+function pickVoice() {
+  if (!tts) return;
+  const vs = speechSynthesis.getVoices().filter(v => /^en[-_]US/i.test(v.lang));
+  const pref = ['Samantha', 'Ava', 'Allison', 'Susan', 'Nicky', 'Karen'];
+  voice = vs.find(v => /premium|enhanced/i.test(v.name) && pref.some(p => v.name.includes(p)))
+       || pref.map(p => vs.find(v => v.name.startsWith(p))).find(Boolean)
+       || vs.find(v => v.localService) || vs[0] || null;
+}
+if (tts) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
+
+function say(text) {
+  if (!tts || save.muted || !text) return sleep(save.muted ? 250 : 0);
+  return new Promise(res => {
+    const u = new SpeechSynthesisUtterance(text);
+    if (voice) u.voice = voice;
+    u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.08;
+    let done = false;
+    const fin = () => { if (!done) { done = true; clearTimeout(t); res(); } };
+    u.onend = fin; u.onerror = fin;
+    const t = setTimeout(fin, 1800 + text.length * 95); // safety net: iOS sometimes skips onend
+    speechSynthesis.speak(u);
+  });
+}
+function hush() { if (tts) speechSynthesis.cancel(); }
+
+/* ---------- little sounds ---------- */
+let actx;
+function tone(freqs, dur = .11, type = 'triangle', gain = .16) {
+  if (save.muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + .01;
+    freqs.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = t0 + i * dur;
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain, t + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur * 2);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur * 2.2);
+    });
+  } catch (e) {}
+}
+const chime = () => tone([660, 880, 1320]);
+const boop  = () => tone([260, 200], .13, 'sine', .12);
+
+/* ---------- leaves ---------- */
+const LEAF_TYPES = ['🍃', '🍂', '🍁', '🌿', '🍃', '🍂', '🍁', '🌸', '🌼', '🌻'];
+function newLeaf() { return Math.random() < .05 ? '🍀' : pick(LEAF_TYPES); }
+function showCount() { $('#leafCount').textContent = save.leaves; }
+function earnLeaf(fromEl) {
+  const leaf = newLeaf();
+  save.leaves++; save.garden.push(leaf);
+  if (save.garden.length > 600) save.garden = save.garden.slice(-600);
+  persist();
+  if (run) run.earned.push(leaf);
+  const chip = $('#leafChip');
+  const r = fromEl.getBoundingClientRect(), c = chip.getBoundingClientRect();
+  const fly = document.createElement('div');
+  fly.className = 'flyer'; fly.textContent = leaf;
+  const x0 = r.left + r.width / 2 - 32, y0 = r.top + r.height / 2 - 32;
+  const dx = c.left + 24 - 32 - x0, dy = c.top + c.height / 2 - 32 - y0;
+  fly.style.left = x0 + 'px'; fly.style.top = y0 + 'px';
+  document.body.appendChild(fly);
+  const done = () => { fly.remove(); showCount(); chip.classList.remove('bump'); void chip.offsetWidth; chip.classList.add('bump'); };
+  if (fly.animate) {
+    fly.animate([
+      { transform: 'translate(0,0) scale(1.5) rotate(0)', opacity: 1 },
+      { transform: `translate(${dx * .45}px, ${dy * .45 - 90}px) scale(1.3) rotate(160deg)`, opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.55) rotate(360deg)`, opacity: .7 }
+    ], { duration: 950, easing: 'ease-in-out' }).onfinish = done;
+  } else done();
+}
+
+/* =========================================================
+   Content
+   ========================================================= */
+const STORIES = [
+  { title: 'The Red Leaf', pic: '🍁',
+    sentences: ['Maya walked in the park.', 'She found a big red leaf.', 'She put it in her book to keep it flat.'],
+    q: 'Why did Maya put the leaf in her book?',
+    options: [['📖', 'To keep it flat', true], ['🐿️', 'To feed a squirrel'], ['🎨', 'To paint it blue']], proof: 2 },
+  { title: 'The Ant Bridge', pic: '🐜',
+    sentences: ['Rain made a puddle on the path.', 'The ants could not get across.', 'They used a pine needle as a bridge.'],
+    q: 'How did the ants get across?',
+    options: [['🌲', 'A pine needle bridge', true], ['🏊', 'They swam'], ['🐦', 'A bird carried them']], proof: 2 },
+  { title: 'Sleepy Bear', pic: '🐻',
+    sentences: ['It was getting cold outside.', 'Bear ate lots of berries.', 'Then he went into his cave to sleep all winter.'],
+    q: 'Where did Bear sleep?',
+    options: [['⛰️', 'In his cave', true], ['🌳', 'In a tree'], ['🌊', 'In the river']], proof: 2 },
+  { title: 'The Seed', pic: '🌱',
+    sentences: ['Leo planted a tiny seed.', 'He gave it water every day.', 'Soon a tall sunflower grew!'],
+    q: 'What grew from the seed?',
+    options: [['🌻', 'A sunflower', true], ['🥕', 'A carrot'], ['🍄', 'A mushroom']], proof: 2 },
+  { title: 'Duck Goes Swimming', pic: '🦆',
+    sentences: ['Duck saw her friends at the pond.', 'She jumped into the cool water.', 'They all swam in a line.'],
+    q: 'Where were Duck\'s friends?',
+    options: [['💧', 'At the pond', true], ['🏠', 'In the barn'], ['🏫', 'At school']], proof: 0 },
+  { title: 'The Snowman', pic: '⛄',
+    sentences: ['Ava rolled three big snowballs.', 'She stacked them up high.', 'She gave her snowman a carrot nose.'],
+    q: 'What did Ava use for the nose?',
+    options: [['🥕', 'A carrot', true], ['🍎', 'An apple'], ['🧦', 'A sock']], proof: 2 },
+  { title: 'The Hiding Kitten', pic: '🐱',
+    sentences: ['Max heard a tiny meow.', 'He looked under the porch.', 'A little kitten was hiding there!'],
+    q: 'Where was the kitten hiding?',
+    options: [['🏡', 'Under the porch', true], ['🌳', 'Up a tree'], ['📦', 'In a box']], proof: 1 },
+  { title: 'Puddle Day', pic: '🌧️',
+    sentences: ['Rain fell all morning.', 'Sam put on his yellow boots.', 'He jumped in every puddle!'],
+    q: 'What did Sam put on?',
+    options: [['🥾', 'Yellow boots', true], ['🧢', 'A red hat'], ['🕶️', 'Sunglasses']], proof: 1 },
+  { title: 'The Hungry Caterpillar', pic: '🐛',
+    sentences: ['A little caterpillar ate lots of leaves.', 'It made a cozy home and went to sleep.', 'It came out as a butterfly!'],
+    q: 'What did the caterpillar eat?',
+    options: [['🍃', 'Leaves', true], ['🍕', 'Pizza'], ['🪨', 'Rocks']], proof: 0 },
+  { title: 'Busy Squirrel', pic: '🐿️',
+    sentences: ['Squirrel found lots of acorns.', 'She dug holes in the ground.', 'She hid the acorns to eat in winter.'],
+    q: 'Why did Squirrel hide the acorns?',
+    options: [['❄️', 'To eat in winter', true], ['🎁', 'To give to Bear'], ['⚽', 'To play ball']], proof: 2 },
+  /* level 2+ stories: four sentences, and the clue is often in the middle */
+  { level: 2, title: 'Robin\'s Nest', pic: '🐦',
+    sentences: ['Robin gathered twigs and grass.', 'She built a nest high in the oak tree.', 'Soon there were three blue eggs inside.', 'Robin sat on the eggs to keep them warm.'],
+    q: 'Why did Robin sit on the eggs?',
+    options: [['🧣', 'To keep them warm', true], ['🎨', 'To paint them'], ['🙈', 'To hide from Cat']], proof: 3 },
+  { level: 2, title: 'The Pumpkin Patch', pic: '🎃',
+    sentences: ['Nora and Dad went to the farm.', 'They saw big pumpkins and small pumpkins.', 'Nora picked the smallest one, so she could carry it.', 'At home, they gave it a silly face.'],
+    q: 'Why did Nora pick the smallest pumpkin?',
+    options: [['👐', 'So she could carry it', true], ['🍰', 'To make a pie'], ['🐷', 'To feed the pigs']], proof: 2 },
+  { level: 2, title: 'Frog and the Fish', pic: '🐸',
+    sentences: ['Frog sat on a lily pad.', 'A big fish swam close by.', 'Frog was scared, so he hopped onto the shore.', 'He waited there until the fish swam away.'],
+    q: 'Why did Frog hop onto the shore?',
+    options: [['😨', 'He was scared of the fish', true], ['🍽️', 'He was hungry'], ['😴', 'He wanted a nap']], proof: 2 },
+  { level: 2, title: 'Windy Day', pic: '🪁',
+    sentences: ['Owen flew his red kite at the beach.', 'The wind was very strong.', 'The kite went up higher than the birds!', 'Then it got stuck in a palm tree.'],
+    q: 'Where did the kite get stuck?',
+    options: [['🌴', 'In a palm tree', true], ['🏠', 'On the roof'], ['🌊', 'In the water']], proof: 3 },
+  { level: 2, title: 'The Snail Race', pic: '🐌',
+    sentences: ['Two snails had a race on a log.', 'Sally moved a little bit at a time.', 'Sam stopped to munch on a leaf.', 'Sally kept going and won the race!'],
+    q: 'Why did Sam lose the race?',
+    options: [['🍃', 'He stopped to eat a leaf', true], ['🪵', 'He fell off the log'], ['😴', 'He fell asleep']], proof: 2 },
+  { level: 2, title: 'The Leaf Pile', pic: '🍂',
+    sentences: ['The leaves turned orange and yellow.', 'They fell from the trees one by one.', 'Grandpa raked them into a giant pile.', 'Then Mia jumped right in the middle!'],
+    q: 'Who made the leaf pile?',
+    options: [['👴', 'Grandpa', true], ['👧', 'Mia'], ['🌬️', 'The wind']], proof: 2 },
+  { level: 2, title: 'Good Night, Moon', pic: '🌙',
+    sentences: ['It was time for bed.', 'Lily looked out her window.', 'She saw a big round moon and lots of stars.', 'She whispered, "Good night, moon!"'],
+    q: 'What did Lily see out the window?',
+    options: [['🌙', 'The moon and stars', true], ['☀️', 'The sun'], ['🌈', 'A rainbow']], proof: 2 },
+];
+
+const THINGS = [
+  ['🌰', 'acorn', 'acorns'], ['🐞', 'ladybug', 'ladybugs'], ['🍎', 'apple', 'apples'], ['🍂', 'leaf', 'leaves'],
+  ['🌸', 'flower', 'flowers'], ['🍄', 'mushroom', 'mushrooms'], ['🐝', 'bee', 'bees'], ['🐚', 'shell', 'shells'],
+  ['🦋', 'butterfly', 'butterflies'], ['🍓', 'strawberry', 'strawberries'], ['🐟', 'fish', 'fish'],
+  ['⭐', 'star', 'stars'], ['🐸', 'frog', 'frogs'], ['🐌', 'snail', 'snails'], ['🌲', 'tree', 'trees'],
+];
+
+const LETTERS = {
+  B: [['🐝', 'bee'], ['🐻', 'bear'], ['🍌', 'banana'], ['🚌', 'bus'], ['🦋', 'butterfly']],
+  C: [['🐱', 'cat'], ['🚗', 'car'], ['🎂', 'cake'], ['🐄', 'cow']],
+  D: [['🐶', 'dog'], ['🦆', 'duck'], ['🥁', 'drum'], ['🍩', 'donut']],
+  F: [['🐟', 'fish'], ['🐸', 'frog'], ['🦊', 'fox'], ['🔥', 'fire']],
+  G: [['🐐', 'goat'], ['🍇', 'grapes'], ['🎁', 'gift'], ['🦍', 'gorilla']],
+  H: [['🎩', 'hat'], ['🐴', 'horse'], ['🏠', 'house'], ['❤️', 'heart']],
+  K: [['🪁', 'kite'], ['🔑', 'key'], ['🐨', 'koala'], ['🦘', 'kangaroo']],
+  L: [['🍃', 'leaf'], ['🦁', 'lion'], ['🍋', 'lemon'], ['🪜', 'ladder']],
+  M: [['🌙', 'moon'], ['🐭', 'mouse'], ['🥛', 'milk'], ['🐒', 'monkey']],
+  N: [['👃', 'nose'], ['🥜', 'nut'], ['🍜', 'noodles'], ['🪺', 'nest']],
+  P: [['🐷', 'pig'], ['🍐', 'pear'], ['🍕', 'pizza'], ['🐧', 'penguin']],
+  R: [['🐰', 'rabbit'], ['🚀', 'rocket'], ['🌹', 'rose'], ['🌈', 'rainbow']],
+  S: [['☀️', 'sun'], ['🐍', 'snake'], ['🧦', 'sock'], ['🦭', 'seal']],
+  T: [['🌳', 'tree'], ['🐢', 'turtle'], ['⛺', 'tent'], ['🐯', 'tiger']],
+  W: [['🐳', 'whale'], ['🍉', 'watermelon'], ['🪱', 'worm'], ['⌚', 'watch']],
+};
+
+const RHYMES = [
+  [['🐱', 'cat'], ['🎩', 'hat'], ['🦇', 'bat']],
+  [['🐶', 'dog'], ['🐸', 'frog'], ['🪵', 'log']],
+  [['🐝', 'bee'], ['🌳', 'tree'], ['🔑', 'key']],
+  [['🌙', 'moon'], ['🥄', 'spoon']],
+  [['⭐', 'star'], ['🚗', 'car'], ['🫙', 'jar']],
+  [['🦊', 'fox'], ['📦', 'box'], ['🧦', 'socks']],
+  [['🐻', 'bear'], ['🍐', 'pear'], ['🪑', 'chair']],
+  [['🐭', 'mouse'], ['🏠', 'house']],
+  [['🐐', 'goat'], ['⛵', 'boat'], ['🧥', 'coat']],
+  [['🐍', 'snake'], ['🎂', 'cake']],
+  [['🐟', 'fish'], ['🍽️', 'dish']],
+  [['🐛', 'bug'], ['☕', 'mug']],
+];
+
+const SHAPES = {
+  circle:    '<circle cx="50" cy="50" r="42"/>',
+  square:    '<rect x="11" y="11" width="78" height="78" rx="3"/>',
+  rectangle: '<rect x="3" y="26" width="94" height="48" rx="3"/>',
+  triangle:  '<polygon points="50,7 94,88 6,88"/>',
+  oval:      '<ellipse cx="50" cy="50" rx="46" ry="29"/>',
+  diamond:   '<polygon points="50,4 88,50 50,96 12,50"/>',
+  heart:     '<path d="M50 90 C 18 66, 3 46, 15 26 C 26 8, 46 12, 50 30 C 54 12, 74 8, 85 26 C 97 46, 82 66, 50 90 Z"/>',
+  star:      '<polygon points="' + Array.from({ length: 10 }, (_, i) => { const r = i % 2 ? 19 : 46, a = Math.PI / 5 * i - Math.PI / 2; return (50 + r * Math.cos(a)).toFixed(1) + ',' + (53 + r * Math.sin(a)).toFixed(1); }).join(' ') + '"/>',
+  hexagon:   '<polygon points="' + Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 3 * i; return (50 + 44 * Math.cos(a)).toFixed(1) + ',' + (50 + 44 * Math.sin(a)).toFixed(1); }).join(' ') + '"/>',
+};
+const SHAPE_COLORS = ['#e05a47', '#3b82c4', '#40916c', '#e08a00', '#9b5de5', '#f15bb5'];
+const shapeSVG = (k, color) => `<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="${color}" stroke="rgba(0,0,0,.18)" stroke-width="3" stroke-linejoin="round">${SHAPES[k]}</g></svg>`;
+
+const PATTERN_THINGS = [
+  ['🍎', 'apple'], ['🍌', 'banana'], ['🐞', 'ladybug'], ['🦋', 'butterfly'], ['🍁', 'red leaf'], ['🍃', 'green leaf'],
+  ['🌸', 'flower'], ['⭐', 'star'], ['🐸', 'frog'], ['🍄', 'mushroom'], ['🐟', 'fish'], ['🌙', 'moon'], ['☀️', 'sun'], ['🐝', 'bee'],
+];
+
+const VENN = [
+  { a: { label: 'Can fly', icon: '🪽', say: 'can fly' }, b: { label: 'Can swim', icon: '💧', say: 'can swim' },
+    items: [['🐦', 'bird', 'a'], ['🦋', 'butterfly', 'a'], ['🐝', 'bee', 'a'], ['🦅', 'eagle', 'a'], ['🐟', 'fish', 'b'],
+            ['🐳', 'whale', 'b'], ['🐙', 'octopus', 'b'], ['🐬', 'dolphin', 'b'], ['🦆', 'duck', 'both'], ['🦢', 'swan', 'both'],
+            ['🦒', 'giraffe', 'none'], ['🐌', 'snail', 'none']] },
+  { a: { label: 'Red', icon: '🔴', say: 'is red' }, b: { label: 'Fruit', icon: '🧺', say: 'is a fruit' },
+    items: [['🍎', 'apple', 'both'], ['🍓', 'strawberry', 'both'], ['🍒', 'cherry', 'both'], ['🍌', 'banana', 'b'],
+            ['🍇', 'grape', 'b'], ['🍐', 'pear', 'b'], ['🚒', 'fire truck', 'a'], ['🐞', 'ladybug', 'a'], ['🌹', 'rose', 'a'],
+            ['🥦', 'broccoli', 'none'], ['🚙', 'blue car', 'none']] },
+  { a: { label: 'Lives on land', icon: '🌳', say: 'lives on land' }, b: { label: 'Lives in water', icon: '🌊', say: 'lives in water' },
+    items: [['🐸', 'frog', 'both'], ['🐢', 'turtle', 'both'], ['🐊', 'crocodile', 'both'], ['🐶', 'dog', 'a'], ['🦁', 'lion', 'a'],
+            ['🐘', 'elephant', 'a'], ['🐟', 'fish', 'b'], ['🐬', 'dolphin', 'b'], ['🐙', 'octopus', 'b']] },
+  { a: { label: 'Green', icon: '🟢', say: 'is green' }, b: { label: 'Plant', icon: '🌱', say: 'is a plant' },
+    items: [['🍃', 'leaf', 'both'], ['🌵', 'cactus', 'both'], ['🥦', 'broccoli', 'both'], ['🌻', 'sunflower', 'b'], ['🌷', 'tulip', 'b'],
+            ['🌹', 'rose', 'b'], ['🐸', 'frog', 'a'], ['🦎', 'lizard', 'a'], ['🐊', 'crocodile', 'a'],
+            ['🐶', 'dog', 'none'], ['🚒', 'fire truck', 'none']] },
+];
+
+/* ordered easiest first; higher levels unlock more of the list */
+const SIGHT_WORDS = ['the', 'a', 'I', 'is', 'it', 'in', 'see', 'can', 'we', 'my', 'go', 'up',
+  'to', 'and', 'like', 'you', 'look', 'me', 'he', 'no',
+  'she', 'said', 'big', 'little', 'play', 'red', 'yes', 'run',
+  'blue', 'jump', 'come', 'down', 'here', 'for', 'not', 'one',
+  'what', 'where', 'they', 'have', 'this', 'that', 'with', 'was', 'are', 'went'];
+const WORD_TIERS = [12, 20, 28, 36, 46];
+
+/* =========================================================
+   Activities
+   ========================================================= */
+const ACTS = {
+  story:  { name: 'Story Time',     icon: '📖', color: '#2d6a4f', blurb: 'Listen & find the clue', rounds: 3, make: makeStory },
+  count:  { name: 'Counting',       icon: '🌰', color: '#b5651d', blurb: 'Count & compare',        rounds: 5, make: makeCount },
+  sounds: { name: 'Letter Sounds',  icon: '🔤', color: '#3b82c4', blurb: 'First sounds & rhymes',  rounds: 6, make: makeSounds },
+  shapes: { name: 'Shapes',         icon: '🔷', color: '#9b5de5', blurb: 'Shapes & patterns',      rounds: 6, make: makeShapes },
+  sort:   { name: 'Sorting Circles',icon: '⭕', color: '#e05a47', blurb: 'Where does it go?',      rounds: 5, make: makeSort },
+  words:  { name: 'Word Hunt',      icon: '👀', color: '#e08a00', blurb: 'Find the sight word',    rounds: 6, make: makeWords },
+};
+
+let run = null;   // current activity session
+let gen = 0;      // bumps on every new screen so stale async steps stop
+let busy = false; // ignore taps while celebrating
+
+function setPlaying(on) { document.body.classList.toggle('playing', on); }
+
+function startAct(id) {
+  gen++; hush(); busy = false;
+  const level = lvl(id);
+  run = { id, act: ACTS[id], level, rounds: ACTS[id].rounds + (level >= 3 ? 1 : 0),
+          q: 0, earned: [], used: new Set(), missed: new Set(), prompt: null, data: {} };
+  setPlaying(true);
+  nextQ();
+}
+function nextQ() {
+  if (!run) return;
+  if (run.q >= run.rounds) return finish();
+  gen++; hush(); busy = false;
+  renderDots();
+  stage.scrollTop = 0;
+  run.act.make(gen);
+}
+function renderDots() {
+  $('#dots').innerHTML = `<span class="lvl">Level ${run.level}</span>` + Array.from({ length: run.rounds }, (_, i) =>
+    `<span class="dot ${i < run.q ? 'done' : i === run.q ? 'now' : ''}"></span>`).join('');
+}
+/* pick something not used yet this session */
+function fresh(list, key) {
+  const left = list.filter(x => !run.used.has(key(x)));
+  const choice = pick(left.length ? left : list);
+  run.used.add(key(choice));
+  return choice;
+}
+/* correct answer: leaf, cheer, then move on */
+async function win(el, msg, g) {
+  busy = true;
+  chime(); pop(el); earnLeaf(el);
+  await say(msg);
+  await sleep(600);
+  if (g !== gen) return;
+  run.q++;
+  nextQ();
+}
+function oops(el, msg) {
+  if (run) run.missed.add(run.q);
+  boop(); shake(el);
+  hush();
+  return say(msg);
+}
+function prompt(fn) { run.prompt = fn; fn(); }
+/* how many answer choices to show at this level */
+const nOpts = () => run.level >= 2 ? 4 : 3;
+const optsClass = n => n === 4 ? 'opts four' : 'opts';
+const orWord = (i, n) => i === n - 1 ? 'or ' : '';
+
+/* ---------- 1. Story Time ---------- */
+function makeStory(g) {
+  // level 1: short stories; level 2: longer ones; level 3+: mostly longer ones, with a few short ones mixed in
+  const long = STORIES.filter(x => x.level >= 2), short = STORIES.filter(x => !x.level);
+  const pool = run.level === 1 ? short : run.level === 2 ? long : (Math.random() < .75 ? long : short);
+  const s = fresh(pool, x => x.title);
+  const opts = shuffle(s.options);
+  let phase = 1;
+  stage.innerHTML = `<div class="screen">
+    <span class="step-pill" id="pill">Listen to the story</span>
+    <div class="story" id="story">
+      <div class="story-card">
+        <div class="story-head"><span class="emo">${s.pic}</span><h2>${s.title}</h2></div>
+        ${s.sentences.map((t, i) => `<button class="sent" data-i="${i}">${t}</button>`).join('')}
+      </div>
+      <div class="story-side">
+        <p class="prompt" id="q" style="visibility:hidden">${s.q}</p>
+        <div class="opts" id="opts" style="visibility:hidden">
+          ${opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="emo">${o[0]}</span>${o[1]}</button>`).join('')}
+        </div>
+      </div>
+    </div></div>`;
+  const sents = [...stage.querySelectorAll('.sent')];
+  const optEls = [...stage.querySelectorAll('.opt')];
+
+  async function readStory() {
+    for (const el of sents) {
+      if (g !== gen) return;
+      el.classList.add('reading'); await say(el.textContent); el.classList.remove('reading');
+    }
+  }
+  async function askQ() {
+    $('#q').style.visibility = 'visible'; $('#opts').style.visibility = 'visible';
+    $('#pill').textContent = 'Step 1: Answer the question';
+    await say(s.q);
+    for (let i = 0; i < optEls.length; i++) {
+      if (g !== gen || phase !== 1) return;
+      optEls[i].classList.add('reading');
+      await say((i === optEls.length - 1 ? 'Or, ' : '') + opts[i][1] + '?');
+      optEls[i].classList.remove('reading');
+    }
+  }
+  prompt(async () => {
+    hush();
+    if (phase === 1) { await readStory(); if (g === gen) await askQ(); }
+    else say('Which sentence tells us? Tap it!');
+  });
+
+  optEls.forEach((el, i) => el.onclick = async () => {
+    if (busy || phase !== 1 || g !== gen) return;
+    if (opts[i][2]) {
+      phase = 2; hush(); chime(); pop(el); earnLeaf(el);
+      el.classList.add('right');
+      $('#story').classList.add('proof');
+      $('#pill').textContent = 'Step 2: Find the clue!';
+      await say(`Yes! ${opts[i][1]}! Now, be a detective. Which sentence in the story tells us? Tap it!`);
+    } else {
+      el.classList.add('nope');
+      await oops(el, `Hmm, not quite. Let's listen to the story again.`);
+      if (g === gen && phase === 1) { await readStory(); if (g === gen && phase === 1) await say(s.q); }
+    }
+  });
+  sents.forEach((el, i) => el.onclick = async () => {
+    if (busy || phase !== 2 || g !== gen) return;
+    if (i === s.proof) {
+      el.classList.add('right');
+      win(el, 'You found the clue! Great detective work!', g);
+    } else {
+      await oops(el, `That one says: ${el.textContent} Try a different sentence.`);
+    }
+  });
+}
+
+/* ---------- 2. Counting ---------- */
+function makeCount(g) {
+  const compare = run.q % 2 === 1;
+  const t = fresh(THINGS, x => x[1]);
+  if (!compare) {
+    // L1: 3–15 objects ... L5: up to 20; higher levels use closer (trickier) number choices
+    const L = run.level;
+    const lo = Math.min(1 + L * 2, 10), hi = Math.min(5 + L * 2 + run.q * 2, 20);
+    const n = lo + rand(Math.max(hi - lo, 1) + 1);
+    const near = L >= 3 ? [n - 1, n + 1, n - 2, n + 2] : shuffle([n - 2, n - 1, n + 1, n + 2]);
+    const cands = near.filter(x => x >= 1).slice(0, nOpts() - 1);
+    const nums = [n, ...cands].sort((a, b) => a - b);
+    stage.innerHTML = `<div class="screen">
+      <p class="prompt">How many ${t[2]}?</p>
+      <p class="sub">Tap each one to count it</p>
+      <div class="field" id="field">${Array.from({ length: n }, () => `<button class="thing">${t[0]}</button>`).join('')}</div>
+      <div class="${optsClass(nums.length)}">${nums.map(x => `<button class="opt num" data-n="${x}">${x}</button>`).join('')}</div>
+      <button class="soft-btn" id="recount">↺ Count again</button>
+    </div>`;
+    let counted = 0;
+    const things = [...stage.querySelectorAll('.thing')];
+    things.forEach(el => el.onclick = () => {
+      if (el.classList.contains('counted') || g !== gen) return;
+      counted++;
+      el.classList.add('counted');
+      el.insertAdjacentHTML('beforeend', `<span class="n">${counted}</span>`);
+      hush(); say(String(counted));
+    });
+    $('#recount').onclick = () => {
+      counted = 0;
+      things.forEach(el => { el.classList.remove('counted'); el.querySelector('.n')?.remove(); });
+      hush(); say("Let's count again from one.");
+    };
+    prompt(() => { hush(); say(`How many ${t[2]}? Tap each one to count!`); });
+    stage.querySelectorAll('.opt').forEach(el => el.onclick = () => {
+      if (busy || g !== gen) return;
+      const x = +el.dataset.n;
+      if (x === n) { el.classList.add('right'); win(el, `Yes! ${n} ${n === 1 ? t[1] : t[2]}!`, g); }
+      else { el.classList.add('nope'); oops(el, `Not ${x}. Let's count carefully. Tap each one!`); }
+    });
+  } else {
+    // groups get bigger and closer together as the level goes up
+    const maxC = Math.min(7 + run.level * 2, 15), minDiff = run.level >= 4 ? 1 : 2;
+    let a = 1 + rand(maxC), b;
+    do { b = 1 + rand(maxC); } while (Math.abs(a - b) < minDiff || a === b);
+    const word = Math.random() < .6 ? 'more' : 'fewer';
+    const ans = (word === 'more') === (a > b) ? 0 : 1;
+    const groups = [a, b];
+    stage.innerHTML = `<div class="screen">
+      <p class="prompt">Which side has ${word} ${t[2]}?</p>
+      <div class="compare">${groups.map((k, i) =>
+        `<button class="opt" data-i="${i}">${Array.from({ length: k }, () => `<span class="emo">${t[0]}</span>`).join('')}</button>`).join('')}</div>
+    </div>`;
+    prompt(() => { hush(); say(`Which side has ${word} ${t[2]}?`); });
+    stage.querySelectorAll('.opt').forEach((el, i) => el.onclick = () => {
+      if (busy || g !== gen) return;
+      if (i === ans) {
+        el.classList.add('right');
+        const [x, y] = [groups[i], groups[1 - i]];
+        win(el, `Yes! ${x} is ${word === 'more' ? 'more' : 'fewer'} than ${y}!`, g);
+      } else {
+        oops(el, `That side has ${groups[i]}. The other side has ${groups[1 - i]}. Which is ${word}?`);
+      }
+    });
+  }
+}
+
+/* ---------- 3. Letter sounds & rhymes ---------- */
+function makeSounds(g) {
+  if (run.q % 2 === 0) {
+    const letter = fresh(Object.keys(LETTERS), x => 'L' + x);
+    const [ans, example] = shuffle(LETTERS[letter]);
+    const others = shuffle(Object.keys(LETTERS).filter(l => l !== letter)).slice(0, nOpts() - 1).map(l => [...pick(LETTERS[l]), l]);
+    const opts = shuffle([[...ans, letter], ...others]);
+    // level 3+: lowercase letter only; level 4+: no "like ___" hint
+    const shown = run.level >= 3 ? letter.toLowerCase() : `${letter}<span>${letter.toLowerCase()}</span>`;
+    const hint = run.level >= 4 ? '' : ` ${letter}, like ${example[1]}.`;
+    stage.innerHTML = `<div class="screen">
+      <div class="big-letter">${shown}</div>
+      <p class="prompt">Which one starts with ${run.level >= 3 ? letter.toLowerCase() : letter}?</p>
+      <div class="${optsClass(opts.length)}">${opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="emo">${o[0]}</span>${o[1]}</button>`).join('')}</div>
+    </div>`;
+    const els = [...stage.querySelectorAll('.opt')];
+    prompt(async () => {
+      hush();
+      await say(`Which one starts with ${letter}?${hint}`);
+      for (let i = 0; i < els.length; i++) {
+        if (g !== gen || busy) return;
+        els[i].classList.add('reading'); await say(orWord(i, els.length) + opts[i][1]); els[i].classList.remove('reading');
+      }
+    });
+    els.forEach((el, i) => el.onclick = () => {
+      if (busy || g !== gen) return;
+      const [, w, l] = opts[i];
+      if (l === letter) { el.classList.add('right'); win(el, `Yes! ${w} starts with ${letter}!`, g); }
+      else { el.classList.add('nope'); oops(el, `${cap(w)} starts with ${l}. Try again!`); }
+    });
+  } else {
+    const grp = fresh(RHYMES, x => x[0][1]);
+    const [target, ans] = shuffle(grp);
+    const others = shuffle(RHYMES.filter(r => r !== grp)).slice(0, nOpts() - 1).map(r => pick(r));
+    const opts = shuffle([ans, ...others]);
+    stage.innerHTML = `<div class="screen">
+      <div class="target-card"><span class="emo">${target[0]}</span>${target[1]}</div>
+      <p class="prompt">Which one rhymes with ${target[1]}?</p>
+      <div class="${optsClass(opts.length)}">${opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="emo">${o[0]}</span>${o[1]}</button>`).join('')}</div>
+    </div>`;
+    const els = [...stage.querySelectorAll('.opt')];
+    prompt(async () => {
+      hush();
+      await say(`Which one rhymes with ${target[1]}?`);
+      for (let i = 0; i < els.length; i++) {
+        if (g !== gen || busy) return;
+        els[i].classList.add('reading'); await say(orWord(i, els.length) + opts[i][1]); els[i].classList.remove('reading');
+      }
+    });
+    els.forEach((el, i) => el.onclick = () => {
+      if (busy || g !== gen) return;
+      if (opts[i] === ans) { el.classList.add('right'); win(el, `Yes! ${target[1]}, ${ans[1]}. They rhyme!`, g); }
+      else { el.classList.add('nope'); oops(el, `${cap(target[1])}... ${opts[i][1]}. Those don't sound the same at the end. Try again!`); }
+    });
+  }
+}
+
+/* ---------- 4. Shapes & patterns ---------- */
+function makeShapes(g) {
+  if (run.q % 2 === 0) {
+    const kinds = Object.keys(SHAPES);
+    const SIDES = { triangle: 3, square: 4, rectangle: 4, diamond: 4, hexagon: 6 };
+    // level 3+: half the shape questions are "find the shape with N sides"
+    const bySides = run.level >= 3 && Math.random() < .5;
+    const target = bySides ? pick(['triangle', 'square', 'hexagon']) : fresh(kinds, x => 'S' + x);
+    const pool = kinds.filter(k => k !== target && (!bySides || SIDES[k] !== SIDES[target]));
+    const opts = shuffle([target, ...shuffle(pool).slice(0, nOpts() - 1)]);
+    const colors = shuffle(SHAPE_COLORS);
+    const ask = bySides ? `Find the shape with ${SIDES[target]} sides!` : `Find the ${target}!`;
+    stage.innerHTML = `<div class="screen">
+      <p class="prompt">${ask}</p>
+      <div class="${optsClass(opts.length)}">${opts.map((k, i) => `<button class="opt" data-i="${i}" aria-label="${k}">${shapeSVG(k, colors[i])}</button>`).join('')}</div>
+    </div>`;
+    prompt(() => { hush(); say(bySides ? `Can you find the shape with ${SIDES[target]} sides?` : `Can you find the ${target}?`); });
+    stage.querySelectorAll('.opt').forEach((el, i) => el.onclick = () => {
+      if (busy || g !== gen) return;
+      if (opts[i] === target) { el.classList.add('right'); win(el, bySides ? `Yes! A ${target} has ${SIDES[target]} sides!` : `Yes! That's a ${target}!`, g); }
+      else { el.classList.add('nope'); oops(el, bySides ? `That one is a ${opts[i]}. Count the sides and try again!` : `That one is a ${opts[i]}. Try again!`); }
+    });
+  } else {
+    const UNITS = [
+      ['AB', 'ABB'],
+      ['AB', 'AAB', 'ABB', 'ABC'],
+      ['AAB', 'ABB', 'ABC', 'AABB'],
+      ['ABC', 'AABB', 'ABBC', 'AABC'],
+      ['AABB', 'ABBC', 'AABC', 'ABCD'],
+    ];
+    const unit = pick(UNITS[run.level - 1]);
+    const distinct = [...new Set(unit)];
+    const k = Math.max(distinct.length + 1, nOpts());
+    const things = shuffle(PATTERN_THINGS).slice(0, k);
+    const map = Object.fromEntries(distinct.map((c, i) => [c, things[i]]));
+    const len = Math.max(unit.length * 2 + 1, 5);
+    const seq = Array.from({ length: len }, (_, i) => map[unit[i % unit.length]]);
+    const ans = map[unit[len % unit.length]];
+    // every pattern item is always offered, plus extra look-alikes up to the level's choice count
+    const opts = shuffle(things.slice(0, Math.max(nOpts(), distinct.length)));
+    stage.innerHTML = `<div class="screen">
+      <p class="prompt">What comes next?</p>
+      <div class="pattern">${seq.map(t => `<span class="cell">${t[0]}</span>`).join('')}<span class="cell q" id="qcell">?</span></div>
+      <div class="${optsClass(opts.length)}">${opts.map((t, i) => `<button class="opt" data-i="${i}"><span class="emo">${t[0]}</span>${t[1]}</button>`).join('')}</div>
+    </div>`;
+    const cells = [...stage.querySelectorAll('.pattern .cell:not(.q)')];
+    prompt(async () => {
+      hush();
+      for (let i = 0; i < seq.length; i++) {
+        if (g !== gen || busy) return;
+        cells[i].classList.add('lit'); await say(seq[i][1]); cells[i].classList.remove('lit');
+      }
+      if (g === gen && !busy) say('What comes next?');
+    });
+    stage.querySelectorAll('.opt').forEach((el, i) => el.onclick = () => {
+      if (busy || g !== gen) return;
+      if (opts[i] === ans) {
+        const q = $('#qcell'); q.textContent = ans[0]; q.classList.remove('q');
+        el.classList.add('right'); win(el, `Yes! ${ans[1]} comes next!`, g);
+      } else { el.classList.add('nope'); oops(el, `Hmm, not ${opts[i][1]}. Say the pattern out loud and try again!`); }
+    });
+  }
+}
+
+/* ---------- 5. Sorting circles (Venn) ---------- */
+const SLOTS = {
+  a:    [[120, 175], [105, 255], [130, 335], [190, 215], [190, 300], [150, 255]],
+  b:    [[520, 175], [535, 255], [510, 335], [450, 215], [450, 300], [490, 255]],
+  both: [[320, 170], [320, 255], [320, 335]],
+  none: [[42, 100], [598, 100], [42, 425], [598, 425]],
+};
+function makeSort(g) {
+  const d = run.data;
+  if (!d.set) {
+    // level 2+: some things belong in neither circle (tap outside)
+    const sets = run.level >= 2 ? VENN.filter(s => s.items.some(x => x[2] === 'none')) : VENN;
+    d.set = pick(sets);
+    const nNone = run.level >= 4 ? 2 : run.level >= 2 ? 1 : 0;
+    d.hasNone = nNone > 0;
+    // at least one item for each circle and one for the middle, then fill up randomly
+    const groups = ['a', 'b', 'both'].map(k => shuffle(d.set.items.filter(x => x[2] === k)));
+    const firsts = groups.map(gr => gr[0]);
+    const nones = shuffle(d.set.items.filter(x => x[2] === 'none')).slice(0, nNone);
+    const rest = shuffle(groups.flatMap(gr => gr.slice(1)));
+    d.queue = shuffle([...firsts, ...nones, ...rest.slice(0, run.rounds - 3 - nones.length)]);
+    d.placed = [];
+  }
+  const set = d.set, item = d.queue[run.q];
+  const first = run.q === 0;
+  const placedSVG = () => {
+    const count = { a: 0, b: 0, both: 0, none: 0 };
+    return d.placed.map(p => { const [x, y] = SLOTS[p[2]][count[p[2]]++ % SLOTS[p[2]].length]; return `<text x="${x}" y="${y}" font-size="54" text-anchor="middle" dominant-baseline="central">${p[0]}</text>`; }).join('');
+  };
+  stage.innerHTML = `<div class="screen"><div class="venn-wrap">
+    <p class="prompt">Where does the ${item[1]} go?</p>
+    <div class="venn-item" id="item">${item[0]}</div>
+    <svg id="venn" viewBox="0 0 640 470" role="img" aria-label="Two overlapping circles">
+      <circle class="c" id="ca" cx="230" cy="255" r="168" fill="#e08a00" fill-opacity=".22" stroke="#e08a00" stroke-width="6"/>
+      <circle class="c" id="cb" cx="410" cy="255" r="168" fill="#3b82c4" fill-opacity=".22" stroke="#3b82c4" stroke-width="6"/>
+      <text x="150" y="48" font-size="32" font-weight="800" text-anchor="middle" fill="#9a5b00">${set.a.icon} ${set.a.label}</text>
+      <text x="490" y="48" font-size="32" font-weight="800" text-anchor="middle" fill="#1f5a91">${set.b.icon} ${set.b.label}</text>
+      <text x="320" y="458" font-size="24" font-weight="700" text-anchor="middle" fill="#64746c">⬆ middle = both${d.hasNone ? ' · outside = neither' : ''}</text>
+      <g id="placed">${placedSVG()}</g>
+    </svg></div></div>`;
+  const svg = $('#venn'), ca = $('#ca'), cb = $('#cb');
+  const light = (els, on) => els.forEach(e => e.classList.toggle('lit', on));
+
+  prompt(async () => {
+    hush();
+    if (first && !d.explained) {
+      d.explained = true;
+      light([ca], true);  await say(`This circle is for things that ${set.a.say}.`); light([ca], false);
+      if (g !== gen) return;
+      light([cb], true);  await say(`This circle is for things that ${set.b.say}.`); light([cb], false);
+      if (g !== gen) return;
+      light([ca, cb], true); await say(`The middle, where they overlap, is for things that do both!`); light([ca, cb], false);
+      if (g !== gen) return;
+      if (d.hasNone) { await say(`And if it's neither, tap outside the circles!`); if (g !== gen) return; }
+    }
+    say(`Where does the ${item[1]} go?`);
+  });
+
+  svg.onclick = e => {
+    if (busy || g !== gen) return;
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const inA = Math.hypot(p.x - 230, p.y - 255) <= 168, inB = Math.hypot(p.x - 410, p.y - 255) <= 168;
+    const region = inA && inB ? 'both' : inA ? 'a' : inB ? 'b' : (d.hasNone ? 'none' : null);
+    if (!region) return;
+    const itemEl = $('#item');
+    if (region === item[2]) {
+      d.placed.push(item);
+      $('#placed').innerHTML = placedSVG();
+      if (region !== 'none') light(region === 'both' ? [ca, cb] : [region === 'a' ? ca : cb], true);
+      const msg = item[2] === 'none' ? `Yes! The ${item[1]} doesn't fit in either circle!`
+        : `Yes! The ${item[1]} ${item[2] === 'both' ? `${set.a.say} and ${set.b.say}` : set[item[2]].say}!`;
+      win(itemEl, msg, g);
+    } else {
+      const c = item[2];
+      const msg = c === 'both'
+        ? `The ${item[1]} ${set.a.say}, and it ${set.b.say} too! Try the middle.`
+        : c === 'none'
+        ? `Hmm. Does the ${item[1]} really fit in a circle? Maybe it goes outside!`
+        : `Hmm. The ${item[1]} ${set[c].say}. Which circle is that?`;
+      oops(itemEl, msg);
+    }
+  };
+}
+
+/* ---------- 6. Word hunt ---------- */
+function makeWords(g) {
+  const pool = SIGHT_WORDS.slice(0, WORD_TIERS[run.level - 1]);
+  // prefer words from this level's new batch so it actually feels new
+  const newBatch = run.level > 1 ? pool.slice(WORD_TIERS[run.level - 2]) : pool;
+  const w = fresh(Math.random() < .6 ? newBatch : pool, x => x);
+  // level 3+: look-alike choices (same first letter or same length)
+  const look = x => (x[0].toLowerCase() === w[0].toLowerCase() ? 2 : 0) + (x.length === w.length ? 1 : 0) + Math.random();
+  const others = pool.filter(x => x !== w);
+  const distract = run.level >= 3 ? others.sort((a, b) => look(b) - look(a)) : shuffle(others);
+  const opts = shuffle([w, ...distract.slice(0, nOpts() - 1)]);
+  stage.innerHTML = `<div class="screen">
+    <p class="prompt">Find the word you hear!</p>
+    <div class="${optsClass(opts.length)}">${opts.map((x, i) => `<button class="opt word" data-i="${i}">${x}</button>`).join('')}</div>
+  </div>`;
+  prompt(async () => { hush(); await say('Find the word...'); if (g === gen) say(w); });
+  stage.querySelectorAll('.opt').forEach((el, i) => el.onclick = () => {
+    if (busy || g !== gen) return;
+    if (opts[i] === w) { el.classList.add('right'); win(el, `Yes! That word is ${w}!`, g); }
+    else { el.classList.add('nope'); oops(el, `That word is ${opts[i]}. Find ${w}!`); }
+  });
+}
+
+/* =========================================================
+   Screens
+   ========================================================= */
+function home() {
+  gen++; hush(); run = null; busy = false;
+  setPlaying(false);
+  stage.innerHTML = `<div class="screen">
+    <div class="hello"><h1>Hi ${kidName() || 'there'}! 🌳</h1><p>Let's go on a tree hunt! What do you want to play?</p></div>
+    <div class="tiles">${Object.entries(ACTS).map(([id, a]) =>
+      `<button class="tile" data-id="${id}" style="background:${a.color}"><span class="emo">${a.icon}</span>${a.name}<small>${a.blurb}</small><small>Level ${lvl(id)} ${stars(lvl(id))}</small></button>`).join('')}</div>
+    <div class="home-foot">
+      <button class="soft-btn" id="gardenBtn">🌳 My leaf garden</button>
+      <button class="soft-btn" id="muteBtn">${save.muted ? '🔇 Voice off' : '🔈 Voice on'}</button>
+    </div>
+  </div>`;
+  stage.querySelectorAll('.tile').forEach(el => el.onclick = () => startAct(el.dataset.id));
+  $('#gardenBtn').onclick = garden;
+  $('#muteBtn').onclick = () => { save.muted = !save.muted; persist(); hush(); home(); if (!save.muted) say('Voice on!'); };
+}
+
+function finish() {
+  const n = run.earned.length, id = run.id, name = run.act.name, L = run.level;
+  // level up when the round had at most one question with a mistake
+  const levelUp = run.missed.size <= 1 && L < MAX_LEVEL;
+  if (levelUp) { save.levels[id] = L + 1; persist(); }
+  const banner = levelUp ? `⭐ Level up! ${name} is now Level ${L + 1}! ⭐`
+    : run.missed.size <= 1 ? `🏆 You're a ${name} champion! 🏆` : '';
+  gen++; busy = false;
+  setPlaying(false);
+  stage.innerHTML = `<div class="screen done">
+    <h1>Great job${kidName() ? ', ' + kidName() : ''}! 🎉</h1>
+    ${banner ? `<div class="levelup">${banner}</div>` : ''}
+    <p>You collected ${n} ${n === 1 ? 'leaf' : 'leaves'}!</p>
+    ${!banner ? `<p class="sub" style="margin:0">Get almost all of them right on the first try to reach Level ${L + 1}!</p>` : ''}
+    <div class="garden" style="min-height:0;font-size:52px">${run.earned.join('') || '🌱'}</div>
+    <div class="row-btns">
+      <button class="big-btn" id="again">Play again</button>
+      <button class="big-btn alt" id="toHome">Home</button>
+    </div>
+  </div>`;
+  run = null;
+  $('#again').onclick = () => startAct(id);
+  $('#toHome').onclick = home;
+  tone(levelUp ? [523, 659, 784, 1047, 784, 1047, 1319] : [523, 659, 784, 1047], .13);
+  confetti();
+  if (levelUp) setTimeout(confetti, 900);
+  say(`Great job${kidName() ? ', ' + kidName() : ''}! You collected ${n} ${n === 1 ? 'leaf' : 'leaves'}!` +
+      (levelUp ? ` And you leveled up! ${name} is now level ${L + 1}!` : ''));
+}
+
+function garden() {
+  gen++; hush(); run = null; busy = false;
+  setPlaying(false);
+  const trees = Math.floor(save.leaves / 20);
+  const toNext = 20 - (save.leaves % 20);
+  stage.innerHTML = `<div class="screen">
+    <div class="hello"><h1>My Leaf Garden</h1><p>${save.leaves} ${save.leaves === 1 ? 'leaf' : 'leaves'} collected</p></div>
+    ${trees ? `<div class="trees">${'🌳'.repeat(Math.min(trees, 30))}</div>` : ''}
+    <p class="sub" style="margin:0">Every 20 leaves grows a tree! ${toNext} more for the next one.</p>
+    <div class="garden">${save.garden.join('') || '<span style="font-size:24px;color:#64746c">Play a game to collect your first leaf!</span>'}</div>
+    <div class="row-btns"><button class="big-btn" id="toHome">Back home</button></div>
+    <div class="grownups">For grown-ups: the name, leaves and levels are saved on this iPad only.
+      <button class="soft-btn" id="reset" style="font-size:16px;padding:6px 14px;margin-left:8px">Reset garden</button>
+      <div style="margin-top:12px">Child's name:
+        <input id="kidName" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false" value="${kidName()}"
+          style="font:inherit;font-size:18px;padding:6px 12px;border-radius:12px;border:2px solid var(--border);width:180px;-webkit-user-select:text;user-select:text">
+        <button class="soft-btn" id="saveName" style="font-size:16px;padding:6px 14px">Save</button></div>
+      <div class="lvl-table">${Object.entries(ACTS).map(([id, a]) =>
+        `<span>${a.icon} ${a.name}</span><button data-lv="${id}" data-d="-1" aria-label="Lower level">−</button><b>Level ${lvl(id)}</b><button data-lv="${id}" data-d="1" aria-label="Raise level">+</button>`).join('')}</div>
+    </div>
+  </div>`;
+  $('#toHome').onclick = home;
+  $('#saveName').onclick = () => {
+    save.kid = cleanName($('#kidName').value); persist(); applyName();
+    $('#kidName').value = kidName(); $('#saveName').textContent = 'Saved ✓';
+  };
+  stage.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => {
+    const id = b.dataset.lv;
+    save.levels[id] = Math.min(MAX_LEVEL, Math.max(1, lvl(id) + +b.dataset.d));
+    persist(); garden();
+  });
+  $('#reset').onclick = () => {
+    if (confirm('Reset all leaves and trees? This cannot be undone.')) {
+      save.leaves = 0; save.garden = []; persist(); showCount(); garden();
+    }
+  };
+  say(trees ? `Look! You grew ${trees} ${trees === 1 ? 'tree' : 'trees'}!` : `You have ${save.leaves} leaves. ${toNext} more grows a tree!`);
+}
+
+function confetti() {
+  for (let i = 0; i < 26; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti'; c.textContent = newLeaf();
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.animationDuration = 2.2 + Math.random() * 2 + 's';
+    c.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5500);
+  }
+}
+
+$('#homeBtn').onclick = home;
+$('#againBtn').onclick = () => { if (run && run.prompt && !busy) run.prompt(); };
+$('#leafChip').onclick = () => { if (!run) garden(); };
+showCount();
+applyName();
+home();
+
+/* offline support once hosted (ignored when opened as a local file) */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
