@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Tree Hunt">
 <meta name="theme-color" content="#2d6a4f">
 <meta name="color-scheme" content="light">
+<!-- Privacy lock: the page may only talk to its own site. No uploads, analytics or outside requests are possible. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
@@ -124,6 +126,40 @@
   .name-input:focus { border-color: var(--forest-2); }
   .link-btn { border: none; background: none; font-size: 20px; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 8px; }
   body.welcoming #leafChip { visibility: hidden; }
+
+  /* ---------- grown-up screens (personalization) ---------- */
+  .grown { max-width: 860px; gap: 16px; }
+  .grown .hello p { font-size: 19px; }
+  .panel { width: 100%; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 16px 20px; font-size: 17px; }
+  .panel h3 { margin: 0 0 10px; font-size: 21px; }
+  .panel summary { cursor: pointer; font-size: 19px; }
+  .privacy { background: var(--forest-light); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; color: #1b4332; }
+  .file-btn { display: block; text-align: center; font-size: 22px; padding: 16px; }
+  .or { text-align: center; color: var(--muted); margin: 12px 0 6px; }
+  .grown textarea, .grown input:not([type=file]) {
+    font: inherit; font-size: 17px; width: 100%; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--border);
+    -webkit-user-select: text; user-select: text; background: #fffdf8; color: var(--ink);
+  }
+  .err { color: var(--coral); font-weight: 700; min-height: 1em; margin: 8px 0; }
+  .hint { color: var(--muted); font-size: 15px; margin: 8px 0 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-t { border: 2px solid var(--border); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 18px; font-weight: 700; cursor: pointer; }
+  .chip-t.on { background: var(--forest); border-color: var(--forest); color: #fff; }
+  .chip-t.small { font-size: 14px; padding: 4px 10px; margin: 2px; }
+  .add-row { display: flex; gap: 8px; margin-top: 10px; }
+  .add-row input { flex: 1; }
+  .evidence { margin: 10px 0 0; padding-left: 0; list-style: none; display: grid; gap: 10px; }
+  .evidence li { background: #fbf8f1; border-radius: 12px; padding: 8px 12px; font-size: 16px; }
+  .evidence small { color: var(--muted); margin-left: 6px; }
+  .tag { font-size: 13px; font-weight: 800; border-radius: 999px; padding: 2px 8px; }
+  .tag.need { background: var(--amber-light); color: #9a5b00; }
+  .tag.strong { background: #d4f3df; color: #1b4332; }
+  .tag.info { background: var(--sky-light); color: #1f5a91; }
+  .tag.mixed { background: #efe4fb; color: #5b2a91; }
+  .personal-box { margin-top: 14px; background: var(--card); border: 2px solid var(--border); border-radius: 16px; padding: 10px 14px; }
+  .personal-box p { margin: 0 0 8px; }
+  .personal-box .soft-btn { font-size: 16px; padding: 6px 14px; margin: 2px; }
+  b.pw { background: #fff1cc; border-radius: 6px; padding: 0 3px; text-decoration: underline 3px #f5c542; text-underline-offset: 4px; }
   .soft-btn {
     border: 3px solid var(--border); background: var(--card); border-radius: 999px;
     padding: 12px 22px; font-size: 20px; font-weight: 700; cursor: pointer;
@@ -502,6 +538,14 @@ const LETTERS = {
   S: [['☀️', 'sun'], ['🐍', 'snake'], ['🧦', 'sock'], ['🦭', 'seal']],
   T: [['🌳', 'tree'], ['🐢', 'turtle'], ['⛺', 'tent'], ['🐯', 'tiger']],
   W: [['🐳', 'whale'], ['🍉', 'watermelon'], ['🪱', 'worm'], ['⌚', 'watch']],
+  A: [['🍎', 'apple'], ['🐜', 'ant'], ['🐊', 'alligator'], ['🚑', 'ambulance']],
+  E: [['🥚', 'egg'], ['🐘', 'elephant'], ['✉️', 'envelope'], ['🛗', 'elevator']],
+  O: [['🐙', 'octopus'], ['🦦', 'otter'], ['🫒', 'olive']],
+  J: [['🧃', 'juice'], ['🪼', 'jellyfish'], ['👖', 'jeans'], ['🫙', 'jar']],
+  V: [['🎻', 'violin'], ['🌋', 'volcano'], ['🚐', 'van'], ['🦺', 'vest']],
+  Y: [['🪀', 'yo-yo'], ['🧶', 'yarn'], ['🥱', 'yawn']],
+  Z: [['🦓', 'zebra'], ['0️⃣', 'zero'], ['🤐', 'zipper']],
+  Q: [['👸', 'queen'], ['❓', 'question'], ['🪙', 'quarter']],
 };
 
 const RHYMES = [
@@ -636,7 +680,15 @@ function makeStory(g) {
   // level 1: short stories; level 2: longer ones; level 3+: mostly longer ones, with a few short ones mixed in
   const long = STORIES.filter(x => x.level >= 2), short = STORIES.filter(x => !x.level);
   const pool = run.level === 1 ? short : run.level === 2 ? long : (Math.random() < .75 ? long : short);
-  const s = fresh(pool, x => x.title);
+  // about half the stories are built around the child's favorite things (if personalized)
+  let s = null;
+  if (profile()?.themes?.length && Math.random() < .5) {
+    for (let tries = 0; tries < 6 && !s; tries++) {
+      const t = themedStory();
+      if (t && !run.used.has(t.title)) { s = t; run.used.add(t.title); }
+    }
+  }
+  if (!s) s = fresh(pool, x => x.title);
   const opts = shuffle(s.options);
   let phase = 1;
   stage.innerHTML = `<div class="screen">
@@ -644,7 +696,7 @@ function makeStory(g) {
     <div class="story" id="story">
       <div class="story-card">
         <div class="story-head"><span class="emo">${s.pic}</span><h2>${s.title}</h2></div>
-        ${s.sentences.map((t, i) => `<button class="sent" data-i="${i}">${t}</button>`).join('')}
+        ${s.sentences.map((t, i) => `<button class="sent" data-i="${i}">${markWords(t)}</button>`).join('')}
       </div>
       <div class="story-side">
         <p class="prompt" id="q" style="visibility:hidden">${s.q}</p>
@@ -711,7 +763,11 @@ function makeCount(g) {
   if (!compare) {
     // L1: 3–15 objects ... L5: up to 20; higher levels use closer (trickier) number choices
     const L = run.level;
-    const lo = Math.min(1 + L * 2, 10), hi = Math.min(5 + L * 2 + run.q * 2, 20);
+    const lo = Math.min(1 + L * 2, 10);
+    let hi = Math.min(5 + L * 2 + run.q * 2, 20);
+    // a counting goal from school notes pulls the range toward it
+    const goal = profile()?.countTo;
+    if (goal) hi = Math.min(20, Math.max(lo + 2, Math.round((hi + Math.min(goal, 20)) / 2)));
     const n = lo + rand(Math.max(hi - lo, 1) + 1);
     const near = L >= 3 ? [n - 1, n + 1, n - 2, n + 2] : shuffle([n - 2, n - 1, n + 1, n + 2]);
     const cands = near.filter(x => x >= 1).slice(0, nOpts() - 1);
@@ -774,7 +830,9 @@ function makeCount(g) {
 /* ---------- 3. Letter sounds & rhymes ---------- */
 function makeSounds(g) {
   if (run.q % 2 === 0) {
-    const letter = fresh(Object.keys(LETTERS), x => 'L' + x);
+    // personalized letters (from school notes) come up about two times in three
+    const focus = practiceLetters();
+    const letter = focus.length && Math.random() < .65 ? fresh(focus, x => 'L' + x) : fresh(Object.keys(LETTERS), x => 'L' + x);
     const [ans, example] = shuffle(LETTERS[letter]);
     const others = shuffle(Object.keys(LETTERS).filter(l => l !== letter)).slice(0, nOpts() - 1).map(l => [...pick(LETTERS[l]), l]);
     const opts = shuffle([[...ans, letter], ...others]);
@@ -979,10 +1037,12 @@ function makeSort(g) {
 
 /* ---------- 6. Word hunt ---------- */
 function makeWords(g) {
-  const pool = SIGHT_WORDS.slice(0, WORD_TIERS[run.level - 1]);
-  // prefer words from this level's new batch so it actually feels new
-  const newBatch = run.level > 1 ? pool.slice(WORD_TIERS[run.level - 2]) : pool;
-  const w = fresh(Math.random() < .6 ? newBatch : pool, x => x);
+  // personalized practice words (from school notes) join the pool and come up most often
+  const prac = practiceWords();
+  const pool = [...new Set([...SIGHT_WORDS.slice(0, WORD_TIERS[run.level - 1]), ...prac])];
+  // otherwise prefer words from this level's new batch so it actually feels new
+  const newBatch = run.level > 1 ? SIGHT_WORDS.slice(WORD_TIERS[run.level - 2], WORD_TIERS[run.level - 1]) : pool;
+  const w = prac.length && Math.random() < .65 ? fresh(prac, x => x) : fresh(Math.random() < .6 ? newBatch : pool, x => x);
   // level 3+: look-alike choices (same first letter or same length)
   const look = x => (x[0].toLowerCase() === w[0].toLowerCase() ? 2 : 0) + (x.length === w.length ? 1 : 0) + Math.random();
   const others = pool.filter(x => x !== w);
@@ -1013,10 +1073,12 @@ function home() {
     <div class="home-foot">
       <button class="soft-btn" id="gardenBtn">🌳 My leaf garden</button>
       <button class="soft-btn" id="muteBtn">${save.muted ? '🔇 Voice off' : '🔈 Voice on'}</button>
+      <button class="soft-btn" id="grownBtn">🔒 For grown-ups</button>
     </div>
   </div>`;
   stage.querySelectorAll('.tile').forEach(el => el.onclick = () => startAct(el.dataset.id));
   $('#gardenBtn').onclick = garden;
+  $('#grownBtn').onclick = () => parentGate(grownupsPage);
   $('#muteBtn').onclick = () => { save.muted = !save.muted; persist(); hush(); home(); if (!save.muted) say('Voice on!'); };
 }
 
@@ -1061,31 +1123,10 @@ function garden() {
     <p class="sub" style="margin:0">Every 20 leaves grows a tree! ${toNext} more for the next one.</p>
     <div class="garden">${save.garden.join('') || '<span style="font-size:24px;color:#64746c">Play a game to collect your first leaf!</span>'}</div>
     <div class="row-btns"><button class="big-btn" id="toHome">Back home</button></div>
-    <div class="grownups">For grown-ups: the name, leaves and levels are saved on this iPad only.
-      <button class="soft-btn" id="reset" style="font-size:16px;padding:6px 14px;margin-left:8px">Reset garden</button>
-      <div style="margin-top:12px">Child's name:
-        <input id="kidName" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false" value="${kidName()}"
-          style="font:inherit;font-size:18px;padding:6px 12px;border-radius:12px;border:2px solid var(--border);width:180px;-webkit-user-select:text;user-select:text">
-        <button class="soft-btn" id="saveName" style="font-size:16px;padding:6px 14px">Save</button></div>
-      <div class="lvl-table">${Object.entries(ACTS).map(([id, a]) =>
-        `<span>${a.icon} ${a.name}</span><button data-lv="${id}" data-d="-1" aria-label="Lower level">−</button><b>Level ${lvl(id)}</b><button data-lv="${id}" data-d="1" aria-label="Raise level">+</button>`).join('')}</div>
-    </div>
+    <button class="link-btn" id="grownBtn2">🔒 For grown-ups</button>
   </div>`;
   $('#toHome').onclick = home;
-  $('#saveName').onclick = () => {
-    save.kid = cleanName($('#kidName').value); persist(); applyName();
-    $('#kidName').value = kidName(); $('#saveName').textContent = 'Saved ✓';
-  };
-  stage.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => {
-    const id = b.dataset.lv;
-    save.levels[id] = Math.min(MAX_LEVEL, Math.max(1, lvl(id) + +b.dataset.d));
-    persist(); garden();
-  });
-  $('#reset').onclick = () => {
-    if (confirm('Reset all leaves and trees? This cannot be undone.')) {
-      save.leaves = 0; save.garden = []; persist(); showCount(); garden();
-    }
-  };
+  $('#grownBtn2').onclick = () => parentGate(grownupsPage);
   say(trees ? `Look! You grew ${trees} ${trees === 1 ? 'tree' : 'trees'}!` : `You have ${save.leaves} leaves. ${toNext} more grows a tree!`);
 }
 
@@ -1116,7 +1157,7 @@ function welcome() {
       autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="go">
     <button class="big-btn" id="letsGo">Let's go! 🍃</button>
     <button class="link-btn" id="skipName">Skip for now</button>
-    <p class="grownups">Your name stays on this device only. A grown-up can change it later on the Leaf Garden page.</p>
+    <p class="grownups">Your name stays on this device only. A grown-up can change it later under “For grown-ups” on the home screen.</p>
   </div>`;
   const input = $('#firstName');
   const done = name => {
@@ -1143,5 +1184,6 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
+<script src="personal.js"></script>
 </body>
 </html>
