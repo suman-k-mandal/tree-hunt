@@ -435,6 +435,11 @@ function grownupsPage() {
       <div class="add-row"><input id="kidName" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Name" value="${kidName()}">
         <button class="soft-btn" id="saveName">Save</button></div></div>
 
+    <div class="panel"><h3>🔈 Voice</h3>
+      <div class="add-row"><select id="voicePick" style="flex:1;font-size:17px;padding:10px;border-radius:14px;border:3px solid var(--border);background:#fff;min-width:0"></select>
+        <button class="soft-btn" id="voiceTest">▶︎ Test</button></div>
+      <p class="hint" style="margin:8px 0 0">For a natural voice, download one in iPad Settings → Accessibility → Spoken Content → Voices → English (pick one marked Enhanced or Premium). Then close Tree Hunt fully (swipe it away in the app switcher) and reopen it — it will show up here.</p></div>
+
     <div class="panel"><h3>⭐ Levels</h3>
       <div class="lvl-table">${Object.entries(ACTS).map(([id, a]) =>
         `<span>${a.icon} ${a.name}</span><button data-lv="${id}" data-d="-1" aria-label="Lower level">−</button><b>Level ${lvl(id)}</b><button data-lv="${id}" data-d="1" aria-label="Raise level">+</button>`).join('')}</div></div>
@@ -462,4 +467,25 @@ function grownupsPage() {
     }
   };
   $('#grownDone').onclick = () => leaveGrown(home);
+  wireVoicePick();
+}
+
+function wireVoicePick() {
+  const sel = $('#voicePick');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  if (!tts) { sel.innerHTML = '<option>Speech not available</option>'; sel.disabled = true; $('#voiceTest').disabled = true; return; }
+  const fill = () => {
+    if (!sel.isConnected) { speechSynthesis.removeEventListener?.('voiceschanged', fill); return; }
+    const vs = englishVoices().filter(v => !ODD_VOICES.test(v.name) || v.voiceURI === save.voice).sort((a, b) => voiceQuality(b) - voiceQuality(a) || a.name.localeCompare(b.name));
+    sel.innerHTML = `<option value="">Automatic${voice && !save.voice ? ' (' + esc(voiceLabel(voice)) + ')' : ''}</option>`
+      + vs.map(v => `<option value="${esc(v.voiceURI)}">${esc(voiceLabel(v))}</option>`).join('');
+    sel.value = save.voice && vs.some(v => v.voiceURI === save.voice) ? save.voice : '';
+  };
+  fill();
+  speechSynthesis.addEventListener?.('voiceschanged', fill);
+  sel.onchange = () => { save.voice = sel.value || undefined; persist(); pickVoice(); fill(); $('#voiceTest').click(); };
+  $('#voiceTest').onclick = () => {
+    const was = save.muted; save.muted = false; hush();
+    say(`Hi ${kidName() || 'friend'}! Let's go on a tree hunt.`); save.muted = was;
+  };
 }

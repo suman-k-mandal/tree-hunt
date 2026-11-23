@@ -366,13 +366,35 @@ const stars = n => '⭐'.repeat(n);
 /* ---------- voice ---------- */
 const tts = 'speechSynthesis' in window;
 let voice = null;
+// Novelty and robotic voices that ship with Apple devices — never pick these automatically.
+const ODD_VOICES = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|eloquence/i;
+// On iPad the quality only shows in voiceURI (e.g. com.apple.voice.premium.en-US.Ava), not in the name.
+function voiceQuality(v) {
+  const id = (v.voiceURI || '') + ' ' + v.name;
+  return /premium/i.test(id) ? 3 : /enhanced|neural|natural/i.test(id) ? 2 : 1;
+}
+function voiceLabel(v) {
+  const q = voiceQuality(v);
+  const name = v.name.replace(/\s*\((premium|enhanced)\)/i, '');
+  return `${name} · ${v.lang.replace('_', '-')}${q === 3 ? ' · Premium' : q === 2 ? ' · Enhanced' : ''}`;
+}
+function englishVoices() {
+  if (!tts) return [];
+  return speechSynthesis.getVoices().filter(v => /^en([-_]|$)/i.test(v.lang));
+}
 function pickVoice() {
-  if (!tts) return;
-  const vs = speechSynthesis.getVoices().filter(v => /^en[-_]US/i.test(v.lang));
-  const pref = ['Samantha', 'Ava', 'Allison', 'Susan', 'Nicky', 'Karen'];
-  voice = vs.find(v => /premium|enhanced/i.test(v.name) && pref.some(p => v.name.includes(p)))
-       || pref.map(p => vs.find(v => v.name.startsWith(p))).find(Boolean)
-       || vs.find(v => v.localService) || vs[0] || null;
+  const all = englishVoices();
+  // A grown-up's choice on the settings page wins.
+  const chosen = save.voice && all.find(v => v.voiceURI === save.voice);
+  if (chosen) { voice = chosen; return; }
+  const pref = ['Ava', 'Zoe', 'Samantha', 'Allison', 'Nicky', 'Susan', 'Evan', 'Tom'];
+  const score = v => {
+    const i = pref.findIndex(p => v.name.startsWith(p));
+    return voiceQuality(v) * 100 + (/^en[-_]US/i.test(v.lang) ? 20 : 0)
+      + (i < 0 ? 0 : 10 - i) + (v.localService ? 1 : 0);
+  };
+  const ok = all.filter(v => !ODD_VOICES.test(v.name));
+  voice = ok.sort((a, b) => score(b) - score(a))[0] || all[0] || null;
 }
 if (tts) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
 
@@ -381,7 +403,7 @@ function say(text) {
   return new Promise(res => {
     const u = new SpeechSynthesisUtterance(text);
     if (voice) u.voice = voice;
-    u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.08;
+    u.lang = voice ? voice.lang : 'en-US'; u.rate = 0.9; u.pitch = 1; // pitch changes make Apple voices sound tinny
     let done = false;
     const fin = () => { if (!done) { done = true; clearTimeout(t); res(); } };
     u.onend = fin; u.onerror = fin;
